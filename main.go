@@ -13,25 +13,27 @@ const (
 
 // Класс доска
 type Board struct {
-	Grid [][]int `json:"grid"`
-}
-
-type ApiExtension struct {
-	Id         int     `json:"id"`
+	Grid       [][]int `json:"grid"`
 	ScoreWhite int     `json:"scorewhite"`
 	ScoreBlack int     `json:"scoreblack"`
-	Board      [][]int `json:"board"`
 }
 
-// func NewApiExt() *ApiExtension {
-// 	a := &ApiExtension{}
+type BoardStore struct {
+	Id    int     `json:"id"`
+	Board [][]int `json:"board"`
+}
+
+// func NewBoardStore() *BoardStore {
+// 	a := &BoardStore{Board: }
 
 // }
 
 // Конструктор
 func NewBoard() *Board {
 	b := &Board{
-		Grid: make([][]int, 8),
+		Grid:       make([][]int, 8),
+		ScoreWhite: 0,
+		ScoreBlack: 0,
 	}
 	for i := range b.Grid {
 		b.Grid[i] = make([]int, 8)
@@ -103,7 +105,7 @@ func (b *Board) isValidMove(startRow, startCol, endRow, endCol int, player int) 
 		return true
 	}
 
-	// Проверка взятия шашки
+	// Обработка перепрыгивания через противника
 	if abs(rowDiff) == 2 && abs(colDiff) == 2 {
 		midRow := (startRow + endRow) / 2
 		midCol := (startCol + endCol) / 2
@@ -115,12 +117,18 @@ func (b *Board) isValidMove(startRow, startCol, endRow, endCol int, player int) 
 	return false
 }
 
-func (b *Board) move(startRow, startCol, endRow, endCol int) {
-	// Проверка взятия шашки
+// Съесть пешку
+func (b *Board) move(startRow, startCol, endRow, endCol, player int) {
+	// Очистка доски от взятой шашки и т.д.
 	if abs(endRow-startRow) == 2 && abs(endCol-startCol) == 2 {
 		midRow := (startRow + endRow) / 2
 		midCol := (startCol + endCol) / 2
 		b.Grid[midRow][midCol] = empty
+		if player == black {
+			b.ScoreWhite += 1
+		} else if player == white {
+			b.ScoreBlack += 1
+		}
 	}
 	b.Grid[endRow][endCol] = b.Grid[startRow][startCol]
 	b.Grid[startRow][startCol] = empty
@@ -152,8 +160,13 @@ func main() {
 		board.Print()
 		var move string
 		if player == white {
+			fmt.Printf("White's score: %d\n", board.ScoreWhite)
+			fmt.Printf("Black's score: %d\n", board.ScoreBlack)
 			fmt.Print("White's move: ")
+
 		} else {
+			fmt.Printf("White's score: %d\n", board.ScoreWhite)
+			fmt.Printf("Black's score: %d\n", board.ScoreBlack)
 			fmt.Print("Black's move: ")
 		}
 		fmt.Scanln(&move)
@@ -165,7 +178,7 @@ func main() {
 		}
 
 		if board.isValidMove(startRow, startCol, endRow, endCol, player) {
-			board.move(startRow, startCol, endRow, endCol)
+			board.move(startRow, startCol, endRow, endCol, player)
 			if player == white {
 				player = black
 			} else {
