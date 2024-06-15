@@ -1,8 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 )
+
+// import (
+// 	"fmt"
+// 	"net/http"
+
+// 	"github.com/gin-gonic/gin"
+// )
 
 // 0, 1, 2
 const (
@@ -13,27 +23,29 @@ const (
 
 // Класс доска
 type Board struct {
-	Grid       [][]int `json:"grid"`
-	ScoreWhite int     `json:"scorewhite"`
-	ScoreBlack int     `json:"scoreblack"`
+	Grid          [][]int `json:"grid"`
+	ScoreWhite    int     `json:"scorewhite"`
+	ScoreBlack    int     `json:"scoreblack"`
+	CurrentPlayer int     `json:"currentplayer"`
+	StartRow      int     `json:"startrow"`
+	EndRow        int     `json:"endrow"`
+	StartCol      int     `json:"startcol"`
+	EndCol        int     `json:"endcol"`
+	Turn          int     `json:"turn"`
 }
-
-type BoardStore struct {
-	Id    int     `json:"id"`
-	Board [][]int `json:"board"`
-}
-
-// func NewBoardStore() *BoardStore {
-// 	a := &BoardStore{Board: }
-
-// }
 
 // Конструктор
 func NewBoard() *Board {
 	b := &Board{
-		Grid:       make([][]int, 8),
-		ScoreWhite: 0,
-		ScoreBlack: 0,
+		Grid:          make([][]int, 8),
+		ScoreWhite:    0,
+		ScoreBlack:    0,
+		CurrentPlayer: 0,
+		StartRow:      0,
+		EndRow:        0,
+		StartCol:      0,
+		EndCol:        0,
+		Turn:          0,
 	}
 	for i := range b.Grid {
 		b.Grid[i] = make([]int, 8)
@@ -125,9 +137,9 @@ func (b *Board) move(startRow, startCol, endRow, endCol, player int) {
 		midCol := (startCol + endCol) / 2
 		b.Grid[midRow][midCol] = empty
 		if player == black {
-			b.ScoreWhite += 1
-		} else if player == white {
 			b.ScoreBlack += 1
+		} else if player == white {
+			b.ScoreWhite += 1
 		}
 	}
 	b.Grid[endRow][endCol] = b.Grid[startRow][startCol]
@@ -152,26 +164,63 @@ func parseMove(move string) (int, int, int, int, error) {
 	return startRow, startCol, endRow, endCol, nil
 }
 
+// func (b *Board) getAllHandler(context *gin.Context) {
+// 	context.JSON(http.StatusOK, b)
+// }
+
+// func (b *Board) createHandler(context *gin.Context) {
+// 	context.JSON()
+// }
+
+func (b *Board) serialize(f *os.File) {
+	bytes, err := json.Marshal(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, errwr := f.Write(bytes)
+	if errwr != nil {
+		log.Fatal(err)
+	}
+	b.Turn += 1
+}
+
 func main() {
 	board := NewBoard()
 	player := white
+	file, err := os.OpenFile("serialized.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	// router := gin.Default()
+
+	// router.GET("/", board.getAllHandler)
+	// router.POST("/", board.createHandler)
+
+	// router.Run("127.0.0.1:8080")
 
 	for {
 		board.Print()
 		var move string
 		if player == white {
+			board.CurrentPlayer = 1
 			fmt.Printf("White's score: %d\n", board.ScoreWhite)
 			fmt.Printf("Black's score: %d\n", board.ScoreBlack)
 			fmt.Print("White's move: ")
 
 		} else {
+			board.CurrentPlayer = 2
 			fmt.Printf("White's score: %d\n", board.ScoreWhite)
 			fmt.Printf("Black's score: %d\n", board.ScoreBlack)
 			fmt.Print("Black's move: ")
 		}
+		board.serialize(file)
 		fmt.Scanln(&move)
-
 		startRow, startCol, endRow, endCol, err := parseMove(move)
+		board.StartRow = startRow
+		board.StartCol = startCol
+		board.EndRow = endCol
+		board.EndCol = endRow
 		if err != nil {
 			fmt.Println("Invalid move format. Use format A1-B2")
 			continue
@@ -181,11 +230,15 @@ func main() {
 			board.move(startRow, startCol, endRow, endCol, player)
 			if player == white {
 				player = black
+				// board.CurrentPlayer = black
 			} else {
 				player = white
+				// board.CurrentPlayer = white
 			}
 		} else {
 			fmt.Println("Invalid move. Try again.")
 		}
+
 	}
+
 }
